@@ -47,6 +47,35 @@
         color: #000;
       }
       
+      .shell-selector {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-right: 20px;
+      }
+      
+      .shell-dropdown {
+        background: #111;
+        color: #0f0;
+        border: 1px solid #333;
+        padding: 5px 10px;
+        font-family: monospace;
+        font-size: 12px;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      
+      .shell-dropdown:focus {
+        outline: none;
+        border-color: #0f0;
+      }
+      
+      .current-shell {
+        font-size: 12px;
+        color: #888;
+        font-style: italic;
+      }
+      
       #output { 
         white-space: pre-wrap; 
         min-height: 400px;
@@ -55,6 +84,16 @@
         padding: 5px;
         border: 1px solid #333;
         margin-bottom: 10px;
+      }
+      
+      .system-message {
+        color: #ff6600 !important;
+        font-weight: bold;
+        background-color: rgba(255, 102, 0, 0.1);
+        padding: 2px 4px;
+        border-left: 3px solid #ff6600;
+        margin: 5px 0;
+        display: block;
       }
       
       .input-container {
@@ -81,9 +120,18 @@
   <body>
     <div class="header">
       <div class="title">Web Terminal</div>
-      <div class="buttons">
-        <button class="btn" onclick="newSession()">New</button>
-        <button class="btn" onclick="clearTerminal()">Clear</button>
+      <div style="display: flex; align-items: center;">
+        <div class="shell-selector">
+          <label for="shellSelect" style="color: #0f0; font-size: 12px;">Shell:</label>
+          <select id="shellSelect" class="shell-dropdown">
+            <option value="">Loading...</option>
+          </select>
+        </div>
+        <div class="current-shell" id="currentShell">Current: Default</div>
+        <div class="buttons">
+          <button class="btn" onclick="newSession()">New</button>
+          <button class="btn" onclick="clearTerminal()">Clear</button>
+        </div>
       </div>
     </div>
     
@@ -97,6 +145,58 @@
       const ws = new WebSocket(`ws://${location.host}`);
       const output = document.getElementById("output");
       const input = document.getElementById("input");
+      const shellSelect = document.getElementById("shellSelect");
+      const currentShellDisplay = document.getElementById("currentShell");
+      
+      let availableShells = [];
+      let currentShell = "Default";
+      
+      // Load available shells on page load
+      async function loadShells() {
+        try {
+          const response = await fetch('/api/shells');
+          const shellData = await response.json();
+          availableShells = shellData.shells;
+          
+          // Clear existing options
+          shellSelect.innerHTML = '';
+          
+          // Add shells to dropdown
+          shellData.shells.forEach(shell => {
+            const option = document.createElement('option');
+            option.value = shell;
+            option.textContent = shell;
+            shellSelect.appendChild(option);
+          });
+          
+          // Set default selection
+          if (shellData.shells.length > 0) {
+            const defaultShell = shellData.OS === 'windows' ? 'cmd.exe' : 'bash';
+            const defaultIndex = shellData.shells.indexOf(defaultShell);
+            if (defaultIndex !== -1) {
+              shellSelect.selectedIndex = defaultIndex;
+              currentShell = defaultShell;
+              updateCurrentShellDisplay();
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load shells:', error);
+          shellSelect.innerHTML = '<option value="">Error loading shells</option>';
+        }
+      }
+      
+      // Handle shell selection change
+      shellSelect.addEventListener('change', function() {
+        const selectedShell = this.value;
+        if (selectedShell && selectedShell !== currentShell) {
+          ws.send(`__SELECT_SHELL__:${selectedShell}`);
+        }
+      });
+      
+      // Update current shell display
+      function updateCurrentShellDisplay() {
+        currentShellDisplay.textContent = `Current: ${currentShell}`;
+      }
       
       // localStorage key for session persistence
       const STORAGE_KEY = 'web_terminal_session';
@@ -153,6 +253,9 @@
       // Restore previous session on page load
       restoreFromStorage();
       
+      // Load available shells
+      loadShells();
+      
       // console.log(`ws://${location.host}`);
       
       ws.onmessage = (e) => { 
@@ -164,7 +267,42 @@
           return;
         }
         
-        output.textContent += data; 
+        // Handle shell change notification
+        if (data.startsWith("__SHELL_CHANGED__:")) {
+          const newShell = data.replace("__SHELL_CHANGED__:", "");
+          currentShell = newShell;
+          updateCurrentShellDisplay();
+          
+          // Update dropdown selection to match
+          const shellIndex = availableShells.indexOf(newShell);
+          if (shellIndex !== -1) {
+            shellSelect.selectedIndex = shellIndex;
+          }
+          return;
+        }
+        
+        // Check if this is a system message and style it differently
+        if (data.includes('[SYSTEM]')) {
+          const lines = data.split('\n');
+          let processedData = '';
+          
+          lines.forEach(line => {
+            if (line.includes('[SYSTEM]')) {
+              // Create a styled system message
+              const messageContent = line.replace('[SYSTEM]', '').trim();
+              processedData += `\n● SYSTEM: ${messageContent}\n`;
+            } else if (line.trim()) {
+              processedData += line + '\n';
+            } else {
+              processedData += '\n';
+            }
+          });
+          
+          output.textContent += processedData;
+        } else {
+          output.textContent += data;
+        }
+        
         saveToStorage(data);
         window.scrollTo(0, document.body.scrollHeight); 
       };
@@ -194,6 +332,14 @@
         clearOutput();
         console.log('Terminal session cleared');
       };
+      
+      // Focus input when clicking anywhere in the terminal area
+      document.addEventListener('click', function(e) {
+        // Check if click is not on interactive elements (buttons, dropdown, input itself)
+        if (!e.target.closest('.btn') && !e.target.closest('.shell-dropdown') && !e.target.closest('#input')) {
+          input.focus();
+        }
+      });
     </script>
   </body>
 </html>

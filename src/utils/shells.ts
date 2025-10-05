@@ -26,14 +26,14 @@ export function getShells() {
     // Default to cmd if nothing else found
     if (shells.length === 0) shells.push("cmd.exe");
 
-    // Optional: WSL shells
+    // Optional: WSL shells - only show /bin/sh
     if (isExecutable("wsl")) {
       try {
         const wslOutput = execSync(`wsl cat /etc/shells`).toString();
         const wslShells = wslOutput
           .split("\n")
           .map(line => line.trim())
-          .filter(line => line && !line.startsWith("#"));
+          .filter(line => line && !line.startsWith("#") && line === "/bin/sh");
         shells.push(...wslShells.map(s => `WSL:${s}`));
       } catch {}
     }
