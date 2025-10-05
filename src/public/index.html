@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Web Terminal</title>
+    <style>
+      body { background: #000; color: #0f0; font-family: monospace; padding: 10px; }
+      #output { white-space: pre-wrap; }
+      input { width: 100%; background: #111; color: #0f0; border: none; outline: none; }
+    </style>
+  </head>
+  <body>
+    <div id="output"></div>
+    <input id="input" autofocus />
+    <script>
+      const ws = new WebSocket(`ws://${location.host}`);
+      const output = document.getElementById("output");
+      const input = document.getElementById("input");
+
+      ws.onmessage = (e) => { output.textContent += e.data; window.scrollTo(0, document.body.scrollHeight); };
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          ws.send(input.value);
+          output.textContent += "> " + input.value + "\n";
+          input.value = "";
+        }
+      });
+    </script>
+  </body>
+</html>

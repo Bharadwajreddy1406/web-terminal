@@ -1,0 +1,35 @@
+{
+  "name": "web_terminal",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \\`Error: no test specified\\` && exit 1",
+    "dev": "nodemon --watch src/**/*.ts --exec ts-node src/index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bharadwajreddy1406/web-terminal.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Bharadwajreddy1406/web-terminal/issues"
+  },
+  "homepage": "https://github.com/Bharadwajreddy1406/web-terminal#readme",
+  "dependencies": {
+    "@types/open": "^6.1.0",
+    "@types/ws": "^8.18.1",
+    "express": "^5.1.0",
+    "open": "^10.2.0",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.6.2",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
