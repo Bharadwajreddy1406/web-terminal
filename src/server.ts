@@ -8,7 +8,7 @@ export function startServer(port: number = 3000) {
   const app = express();
   
   const server = app.listen(port, () => {
-      console.log(`✅ Web Terminal running at http://localhost:${port}`);
+      console.log(` Web Terminal running at http://localhost:${port}`);
       open(`http://localhost:${port}`);
     });
     const wss = new WebSocketServer({ server });

@@ -15,16 +15,70 @@
       const ws = new WebSocket(`ws://${location.host}`);
       const output = document.getElementById("output");
       const input = document.getElementById("input");
+      
+      // localStorage key for session persistence
+      const STORAGE_KEY = 'web_terminal_session';
+      const MAX_STORAGE_SIZE = 100000; // Max characters to store (configurable)
+      
+      // Function to save output to localStorage
+      function saveToStorage(data) {
+        try {
+          let stored = localStorage.getItem(STORAGE_KEY) || '';
+          stored += data;
+          
+          // if exceeds max size
+          if (stored.length > MAX_STORAGE_SIZE) {
+            stored = stored.slice(-MAX_STORAGE_SIZE);
+          }
+          
+          localStorage.setItem(STORAGE_KEY, stored);
+        } catch (e) {
+          // Storage quota exceeded or not available
+          console.warn('localStorage not available:', e);
+        }
+      }
+      
+      // Function to restore output from localStorage
+      function restoreFromStorage() {
+        try {
+          const stored = localStorage.getItem(STORAGE_KEY);
+          if (stored) {
+            output.textContent = stored;
+            window.scrollTo(0, document.body.scrollHeight);
+          }
+        } catch (e) {
+          console.warn('Failed to restore from localStorage:', e);
+        }
+      }
+      
+      // Restore previous session on page load
+      restoreFromStorage();
+      
       // console.log(`ws://${location.host}`);
       
-      ws.onmessage = (e) => { output.textContent += e.data; window.scrollTo(0, document.body.scrollHeight); };
+      ws.onmessage = (e) => { 
+        const data = e.data;
+        output.textContent += data; 
+        saveToStorage(data);
+        window.scrollTo(0, document.body.scrollHeight); 
+      };
+      
       input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           ws.send(input.value);
-          output.textContent += "> " + input.value + "\n";
+          const userInput = "> " + input.value + "\n";
+          output.textContent += userInput;
+          saveToStorage(userInput);
           input.value = "";
         }
       });
+      
+      // Optional: Clear session storage on demand
+      window.clearTerminalSession = function() {
+        localStorage.removeItem(STORAGE_KEY);
+        output.textContent = '';
+        console.log('Terminal session cleared');
+      };
     </script>
   </body>
 </html>
