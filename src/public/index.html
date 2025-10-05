@@ -15,7 +15,8 @@
       const ws = new WebSocket(`ws://${location.host}`);
       const output = document.getElementById("output");
       const input = document.getElementById("input");
-
+      // console.log(`ws://${location.host}`);
+      
       ws.onmessage = (e) => { output.textContent += e.data; window.scrollTo(0, document.body.scrollHeight); };
       input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
