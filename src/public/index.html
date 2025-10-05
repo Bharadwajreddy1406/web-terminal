@@ -3,14 +3,96 @@
   <head>
     <title>Web Terminal</title>
     <style>
-      body { background: #000; color: #0f0; font-family: monospace; padding: 10px; }
-      #output { white-space: pre-wrap; }
-      input { width: 100%; background: #111; color: #0f0; border: none; outline: none; }
+      body { 
+        background: #000; 
+        color: #0f0; 
+        font-family: monospace; 
+        padding: 10px; 
+        margin: 0;
+      }
+      
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        padding: 5px 0;
+        border-bottom: 1px solid #333;
+      }
+      
+      .title {
+        font-size: 18px;
+        font-weight: bold;
+      }
+      
+      .buttons {
+        display: flex;
+        gap: 10px;
+      }
+      
+      .btn {
+        background: #333;
+        color: #0f0;
+        border: 1px solid #0f0;
+        padding: 5px 15px;
+        cursor: pointer;
+        font-family: monospace;
+        font-size: 12px;
+        border-radius: 3px;
+        transition: background-color 0.2s;
+      }
+      
+      .btn:hover {
+        background: #0f0;
+        color: #000;
+      }
+      
+      #output { 
+        white-space: pre-wrap; 
+        min-height: 400px;
+        max-height: 70vh;
+        overflow-y: auto;
+        padding: 5px;
+        border: 1px solid #333;
+        margin-bottom: 10px;
+      }
+      
+      .input-container {
+        display: flex;
+        align-items: center;
+      }
+      
+      .prompt {
+        color: #0f0;
+        margin-right: 5px;
+      }
+      
+      input { 
+        flex: 1;
+        background: #111; 
+        color: #0f0; 
+        border: none; 
+        outline: none; 
+        font-family: monospace;
+        padding: 5px;
+      }
     </style>
   </head>
   <body>
+    <div class="header">
+      <div class="title">Web Terminal</div>
+      <div class="buttons">
+        <button class="btn" onclick="newSession()">New</button>
+        <button class="btn" onclick="clearTerminal()">Clear</button>
+      </div>
+    </div>
+    
     <div id="output"></div>
-    <input id="input" autofocus />
+    
+    <div class="input-container">
+      <span class="prompt">$</span>
+      <input id="input" autofocus />
+    </div>
     <script>
       const ws = new WebSocket(`ws://${location.host}`);
       const output = document.getElementById("output");
@@ -51,6 +133,23 @@
         }
       }
       
+      // Function to clear terminal output
+      function clearOutput() {
+        output.textContent = '';
+        localStorage.removeItem(STORAGE_KEY);
+        window.scrollTo(0, 0);
+      }
+      
+      // Button functions
+      function newSession() {
+        ws.send("__NEW_SESSION__");
+        clearOutput();
+      }
+      
+      function clearTerminal() {
+        ws.send("__CLEAR__");
+      }
+      
       // Restore previous session on page load
       restoreFromStorage();
       
@@ -58,6 +157,13 @@
       
       ws.onmessage = (e) => { 
         const data = e.data;
+        
+        // Handle special clear command from server
+        if (data === "__CLEAR_OUTPUT__") {
+          clearOutput();
+          return;
+        }
+        
         output.textContent += data; 
         saveToStorage(data);
         window.scrollTo(0, document.body.scrollHeight); 
@@ -65,18 +171,27 @@
       
       input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
-          ws.send(input.value);
-          const userInput = "> " + input.value + "\n";
+          const command = input.value;
+          
+          // Handle special commands locally for immediate feedback
+          if (command === "clear" || command === "cls") {
+            clearOutput();
+            input.value = "";
+            return;
+          }
+          
+          ws.send(command);
+          const userInput = "> " + command + "\n";
           output.textContent += userInput;
           saveToStorage(userInput);
           input.value = "";
+          window.scrollTo(0, document.body.scrollHeight);
         }
       });
       
       // Optional: Clear session storage on demand
       window.clearTerminalSession = function() {
-        localStorage.removeItem(STORAGE_KEY);
-        output.textContent = '';
+        clearOutput();
         console.log('Terminal session cleared');
       };
     </script>
