@@ -143,8 +143,9 @@
     </div>
     <script>
       const ws = new WebSocket(`ws://${location.host}`);
-      const output = document.getElementById("output");
-      const input = document.getElementById("input");
+  const output = document.getElementById("output");
+  const input = document.getElementById("input");
+  const inputContainer = document.querySelector('.input-container');
       const shellSelect = document.getElementById("shellSelect");
       const currentShellDisplay = document.getElementById("currentShell");
       
@@ -226,7 +227,8 @@
           const stored = localStorage.getItem(STORAGE_KEY);
           if (stored) {
             output.textContent = stored;
-            window.scrollTo(0, document.body.scrollHeight);
+            // scroll the output element to the bottom
+            output.scrollTop = output.scrollHeight;
           }
         } catch (e) {
           console.warn('Failed to restore from localStorage:', e);
@@ -237,7 +239,8 @@
       function clearOutput() {
         output.textContent = '';
         localStorage.removeItem(STORAGE_KEY);
-        window.scrollTo(0, 0);
+        // reset the output scroll to top
+        output.scrollTop = 0;
       }
       
       // Button functions
@@ -304,7 +307,8 @@
         }
         
         saveToStorage(data);
-        window.scrollTo(0, document.body.scrollHeight); 
+        // ensure the output container scrolls to the bottom when new data arrives
+        output.scrollTop = output.scrollHeight;
       };
       
       input.addEventListener("keydown", (e) => {
@@ -323,7 +327,8 @@
           output.textContent += userInput;
           saveToStorage(userInput);
           input.value = "";
-          window.scrollTo(0, document.body.scrollHeight);
+          // scroll the output container to the bottom after adding user's command
+          output.scrollTop = output.scrollHeight;
         }
       });
       
@@ -333,11 +338,45 @@
         console.log('Terminal session cleared');
       };
       
-      // Focus input when clicking anywhere in the terminal area
-      document.addEventListener('click', function(e) {
-        // Check if click is not on interactive elements (buttons, dropdown, input itself)
-        if (!e.target.closest('.btn') && !e.target.closest('.shell-dropdown') && !e.target.closest('#input')) {
+      // Clicking anywhere inside the input container should focus the input
+      if (inputContainer) {
+        inputContainer.addEventListener('click', function(e) {
+          // If the native input itself was clicked, let the browser handle caret placement
+          if (e.target === input) return;
+
+          // Compute approximate caret position based on click X coordinate
+          const rect = input.getBoundingClientRect();
+          const clickX = e.clientX - rect.left;
+
+          // measure an approximate character width using a hidden span
+          const style = window.getComputedStyle(input);
+          const measurer = document.createElement('span');
+          measurer.style.visibility = 'hidden';
+          measurer.style.position = 'absolute';
+          measurer.style.whiteSpace = 'pre';
+          measurer.style.font = style.font;
+          measurer.textContent = 'M';
+          document.body.appendChild(measurer);
+          const charWidth = measurer.getBoundingClientRect().width || 8;
+          document.body.removeChild(measurer);
+
+          let index = Math.floor(clickX / charWidth);
+          index = Math.max(0, Math.min(index, input.value.length));
+          input.setSelectionRange(index, index);
           input.focus();
+        });
+      }
+
+      // Focus input when clicking anywhere in the terminal area (non-interactive regions)
+      document.addEventListener('click', function(e) {
+        // Ignore clicks on interactive elements (buttons, dropdowns, and the input itself)
+        if (!e.target.closest('.btn') && !e.target.closest('.shell-dropdown') && !e.target.closest('#input')) {
+          // If the click wasn't inside the input container, place caret at the end
+          if (!e.target.closest('.input-container')) {
+            input.focus();
+            const len = input.value.length;
+            input.setSelectionRange(len, len);
+          }
         }
       });
     </script>
